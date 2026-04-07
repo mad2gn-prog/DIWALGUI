@@ -942,7 +942,7 @@ tr.row-rej td{background:#fff8f8}
 <script>
 const TODAY=new Date().toISOString().split('T')[0];
 let role='',user='',selectedMotif='',exportMode='',confirmAction=null;
-const AT_KEY='patRVw8FOXVQe1K5R.31fa484f9544607c472535ee037db4142a31b3a3573225cc3b32bcc0e099f160';const AT_BASE='appc7RsAToqeLfjQj';const AT_TABLE='tblzkTM46S1K8vy5o';const AT_USERS_TABLE='Config';let atCfg={k:AT_KEY,b:AT_BASE,t:AT_TABLE};
+const AT_KEY='patRVw8FOXVQe1K5R.31fa484f9544607c472535ee037db4142a31b3a3573225cc3b32bcc0e099f160';const AT_BASE='appc7RsAToqeLfjQj';const AT_TABLE='tblzkTM46S1K8vy5o';let atCfg={k:AT_KEY,b:AT_BASE,t:AT_TABLE};
 let live=true;
 let periodState={treasury:{mode:'all',from:'',to:''},accounting:{mode:'all',from:'',to:''},direction:{mode:'all',from:'',to:''}};
 let fileStore={};
@@ -954,48 +954,48 @@ const ADMIN_NAME='Mamadou Alseny Diallo';
 const ADMIN_PW_DEFAULT='admin2024';
 const ROLE_LABELS={specialist:'Spécialiste',treasury:'Trésorerie',accounting:'Comptabilité',direction:'Direction',admin:'Administrateur'};
 
+function hashPw(pw){let h=0;for(let i=0;i<pw.length;i++){h=((h<<5)-h)+pw.charCodeAt(i);h|=0}return String(h)}
+
+async function initAdmin(){
+  await loadUsersFromAt();
+  const users=getUsers();
+  if(!users.find(u=>u.name===ADMIN_NAME)){
+    users.push({name:ADMIN_NAME,role:'admin',pw:hashPw(ADMIN_PW_DEFAULT)});
+    saveUsers(users);
+  }
+}
+
 function getUsers(){return JSON.parse(localStorage.getItem('diw_users')||'[]')}
 function saveUsers(u){
   localStorage.setItem('diw_users',JSON.stringify(u));
   pushUsersToAt(u);
 }
 
-/* ══ USERS SYNC — Single JSON record in Airtable Config table ══ */
-let _usersRecordId=null; // Airtable record ID for the users config
+/* ══ USERS SYNC via Airtable (same table, special record) ══ */
+let _usersAtId=null;
+
+async function atFetch(path,opts={}){
+  const url='https://api.airtable.com/v0/'+atCfg.b+'/'+encodeURIComponent(atCfg.t)+path;
+  return fetch(url,{...opts,headers:{...opts.headers,'Authorization':'Bearer '+atCfg.k,'Content-Type':'application/json'}});
+}
 
 async function pushUsersToAt(users){
   if(!atCfg)return;
+  const val=JSON.stringify(users);
   try{
-    const tbl=encodeURIComponent(AT_USERS_TABLE);
-    const base=atCfg.b,key=atCfg.k;
-    const payload=JSON.stringify(users);
-    if(_usersRecordId){
-      // Update existing record
-      await fetch(`https://api.airtable.com/v0/${base}/${tbl}/${_usersRecordId}`,{
-        method:'PATCH',
-        headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-        body:JSON.stringify({fields:{'Cle':'users','Valeur':payload}})
-      });
+    if(_usersAtId){
+      await atFetch('/'+_usersAtId,{method:'PATCH',body:JSON.stringify({fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}})});
     } else {
-      // Find or create record
-      const r=await fetch(`https://api.airtable.com/v0/${base}/${tbl}?filterByFormula=%7BCle%7D%3D%22users%22`,
-        {headers:{'Authorization':'Bearer '+key}});
+      // search first
+      const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22');
       if(!r.ok)return;
-      const data=await r.json();
-      if(data.records&&data.records.length>0){
-        _usersRecordId=data.records[0].id;
-        await fetch(`https://api.airtable.com/v0/${base}/${tbl}/${_usersRecordId}`,{
-          method:'PATCH',
-          headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-          body:JSON.stringify({fields:{'Cle':'users','Valeur':payload}})
-        });
+      const d=await r.json();
+      if(d.records&&d.records.length){
+        _usersAtId=d.records[0].id;
+        await atFetch('/'+_usersAtId,{method:'PATCH',body:JSON.stringify({fields:{Agent:val}})});
       } else {
-        const cr=await fetch(`https://api.airtable.com/v0/${base}/${tbl}`,{
-          method:'POST',
-          headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-          body:JSON.stringify({records:[{fields:{'Cle':'users','Valeur':payload}}]})
-        });
-        if(cr.ok){const d=await cr.json();if(d.records&&d.records[0])_usersRecordId=d.records[0].id;}
+        const cr=await atFetch('',{method:'POST',body:JSON.stringify({records:[{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}}]})});
+        if(cr.ok){const cd=await cr.json();if(cd.records&&cd.records[0])_usersAtId=cd.records[0].id;}
       }
     }
   }catch(e){/* silent */}
@@ -1004,41 +1004,25 @@ async function pushUsersToAt(users){
 async function loadUsersFromAt(){
   if(!atCfg)return false;
   try{
-    const tbl=encodeURIComponent(AT_USERS_TABLE);
-    const base=atCfg.b,key=atCfg.k;
-    const r=await fetch(`https://api.airtable.com/v0/${base}/${tbl}?filterByFormula=%7BCle%7D%3D%22users%22`,
-      {headers:{'Authorization':'Bearer '+key}});
-    if(!r.ok){console.warn('AT users HTTP',r.status);return false;}
-    const data=await r.json();
-    if(!data.records||!data.records.length)return true; // No users yet, that's ok
-    const rec=data.records[0];
-    _usersRecordId=rec.id;
-    const raw=rec.fields['Valeur']||'[]';
+    const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22');
+    if(!r.ok)return false;
+    const d=await r.json();
+    if(!d.records||!d.records.length)return true;
+    _usersAtId=d.records[0].id;
+    const raw=d.records[0].fields['Agent']||'[]';
     const users=JSON.parse(raw);
-    if(users.length>0){
-      // Ensure local admin is preserved
-      const adminLocal=getUsers().find(u=>u.name===ADMIN_NAME);
+    if(users.length){
+      const local=getUsers();
+      const admin=local.find(u=>u.name===ADMIN_NAME);
       const merged=[...users];
-      if(adminLocal&&!merged.find(u=>u.name===ADMIN_NAME)){merged.push(adminLocal);}
+      if(admin&&!merged.find(u=>u.name===ADMIN_NAME))merged.push(admin);
       localStorage.setItem('diw_users',JSON.stringify(merged));
     }
     return true;
-  }catch(e){
-    console.warn('loadUsersFromAt error:',e.message);
-    return false;
-  }
+  }catch(e){return false;}
 }
-function hashPw(pw){let h=0;for(let i=0;i<pw.length;i++){h=((h<<5)-h)+pw.charCodeAt(i);h|=0}return String(h)}
 
-async function initAdmin(){
-  // First try to load from Airtable
-  await loadUsersFromAt();
-  const users=getUsers();
-  if(!users.find(u=>u.name===ADMIN_NAME)){
-    users.push({name:ADMIN_NAME,role:'admin',pw:hashPw(ADMIN_PW_DEFAULT)});
-    saveUsers(users);
-  }
-}
+
 function switchAuthTab(t){
   document.getElementById('tab-login').classList.toggle('on',t==='login');
   document.getElementById('tab-register').classList.toggle('on',t==='register');
@@ -1064,16 +1048,14 @@ async function doRegister(){
   if(pw.length<4){err.textContent='Le mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
   if(pw!==pw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
   if(name.toLowerCase()===ADMIN_NAME.toLowerCase()){err.textContent='Ce nom est réservé.';err.classList.add('show');return}
-  // Load latest users from Airtable first to check for duplicates
   const btn=document.querySelectorAll('.lbtn')[1]||document.querySelector('.lbtn');
   if(btn){btn.textContent='⏳ Création…';btn.disabled=true;}
   await loadUsersFromAt();
   if(btn){btn.textContent='Créer mon compte →';btn.disabled=false;}
   const users=getUsers();
   if(users.find(u=>u.name.toLowerCase()===name.toLowerCase())){err.textContent='Un compte avec ce nom existe déjà.';err.classList.add('show');return}
-  const newUser={name,role:rl,pw:hashPw(pw)};
-  users.push(newUser);
-  saveUsers(users); // This also syncs to Airtable
+  users.push({name,role:rl,pw:hashPw(pw)});
+  saveUsers(users);
   toast('✅ Compte créé ! Connectez-vous maintenant.');
   switchAuthTab('login');
   document.getElementById('login-name').value=name;
@@ -1090,17 +1072,12 @@ async function doLogin(){
   const btn=document.querySelector('.lbtn');
   const orig=btn?btn.textContent:'';
   if(btn){btn.textContent='⏳ Connexion…';btn.disabled=true;}
-  // Always sync from Airtable first
   const synced=await loadUsersFromAt();
   if(btn){btn.textContent=orig;btn.disabled=false;}
-  // Try to find user
   let u=getUsers().find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.pw===hashPw(pw));
   if(!u){
-    if(!synced){
-      err.textContent='Impossible de contacter le serveur. Vérifiez votre connexion internet.';
-    } else {
-      err.textContent='Nom ou mot de passe incorrect.';
-    }
+    if(!synced){err.textContent='Impossible de contacter le serveur. Vérifiez votre connexion internet.';}
+    else{err.textContent='Nom ou mot de passe incorrect.';}
     err.classList.add('show');return;
   }
   role=u.role;user=u.name;
@@ -1333,7 +1310,7 @@ function setPeriodDi(mode,btn){
   periodState.direction.from=r.from;periodState.direction.to=r.to;
   setPeriodBtns('di-pb-',btn.id);showCustomDates('di',mode==='custom');all();
 }
-function getFilteredDeps(page){const s=periodState[page]||{from:'',to:''};return deps.filter(d=>inPeriod(d.date,s.from,s.to));}
+function getFilteredDeps(page){const s=periodState[page]||{from:'',to:''};return deps.filter(d=>d.id!=='__USERS__'&&d.status!=='__CONFIG__'&&inPeriod(d.date,s.from,s.to));}
 
 /* ══ UPLOAD ══ */
 function handleUp(e,context){
@@ -1492,6 +1469,7 @@ function rtbl(){
   const canBrd=['treasury','direction','accounting','admin'].includes(role);
   const ps=periodState.treasury;
   const data=deps.filter(d=>{
+    if(d.id==='__USERS__'||d.status==='__CONFIG__')return false;
     const ms=!q||[d.agent,d.phone,d.ref,d.spec].join(' ').toLowerCase().includes(q);
     return ms&&(!fb||d.bank===fb)&&(!fst||d.status===fst)&&inPeriod(d.date,ps.from,ps.to);
   });
@@ -1504,6 +1482,7 @@ function rtblAdmin(){
   const q=(document.getElementById('adm-q')||{value:''}).value.toLowerCase();
   const fst=(document.getElementById('adm-stat')||{value:''}).value;
   const data=deps.filter(d=>{
+    if(d.id==='__USERS__'||d.status==='__CONFIG__')return false;
     const ms=!q||[d.agent,d.phone,d.ref,d.spec].join(' ').toLowerCase().includes(q);
     return ms&&(!fst||d.status===fst);
   });
@@ -1806,13 +1785,15 @@ async function loadAt(){
     if(!r.ok){console.warn('Airtable error:',r.status);return;}
     const data=await r.json();
     if(data.records){
-      deps=data.records.map(rec=>({
-        id:rec.fields['ID']||rec.id,agent:rec.fields['Agent']||'',phone:rec.fields['Téléphone']||'',
-        bank:rec.fields['Banque']||'',amount:rec.fields['Montant']||0,date:rec.fields['Date']||'',
-        ref:rec.fields['Référence']||'—',spec:rec.fields['Spécialiste']||'',
-        status:rec.fields['Statut']||'En attente',by:rec.fields['Validé par']||'',
-        comment:rec.fields['Commentaire']||'',motif:rec.fields['Motif Rejet']||'',_id:rec.id
-      }));all();
+      deps=data.records
+        .filter(rec=>rec.fields['ID']!=='__USERS__'&&rec.fields['Statut']!=='__CONFIG__')
+        .map(rec=>({
+          id:rec.fields['ID']||rec.id,agent:rec.fields['Agent']||'',phone:rec.fields['Téléphone']||'',
+          bank:rec.fields['Banque']||'',amount:rec.fields['Montant']||0,date:rec.fields['Date']||'',
+          ref:rec.fields['Référence']||'—',spec:rec.fields['Spécialiste']||'',
+          status:rec.fields['Statut']||'En attente',by:rec.fields['Validé par']||'',
+          comment:rec.fields['Commentaire']||'',motif:rec.fields['Motif Rejet']||'',_id:rec.id
+        }));all();
     }
   }catch(e){/* silent - network issue */}
 }
