@@ -320,7 +320,11 @@ tr.row-rej td{background:#fff8f8}
     </div>
     <div class="lerr" id="login-err">Nom ou mot de passe incorrect.</div>
     <button class="lbtn" onclick="doLogin()">Se connecter →</button>
-    <div class="lhint">Pas encore de compte ?<br>
+    <div class="lhint" style="margin-top:10px">
+      <a onclick="openForgotPw()" style="color:var(--muted);cursor:pointer;font-size:12px;text-decoration:underline">Mot de passe oublié ?</a>
+    </div>
+    <div class="lhint" style="margin-top:6px">
+      Pas encore de compte ?<br>
       <a onclick="switchAuthTab('register')" style="color:var(--teal);cursor:pointer;font-weight:700">Créer un compte →</a>
     </div>
   </div>
@@ -328,14 +332,8 @@ tr.row-rej td{background:#fff8f8}
     <label class="llabel">Prénom et Nom <span style="color:var(--orange)">*</span></label>
     <input class="linput" type="text" id="reg-name" placeholder="Ex: Doukoure Mohamed"
       autocomplete="name" autocapitalize="words">
-    <label class="llabel">Rôle <span style="color:var(--orange)">*</span></label>
-    <select class="lselect" id="reg-role">
-      <option value="">— Sélectionner votre rôle —</option>
-      <option value="specialist">📋 Spécialiste Distribution</option>
-      <option value="treasury">💰 Trésorerie</option>
-      <option value="accounting">📊 Comptabilité</option>
-      <option value="direction">🏢 Direction / Management</option>
-    </select>
+
+    <input type="hidden" id="reg-role" value="specialist">
     <label class="llabel">Mot de passe <span style="color:var(--orange)">*</span></label>
     <div class="pw-wrap">
       <input class="linput" type="password" id="reg-pw" placeholder="Min. 4 caractères"
@@ -369,6 +367,7 @@ tr.row-rej td{background:#fff8f8}
     </span>
     <span class="topbar-user" id="topbar-user"></span>
     <span class="trole" id="rbadge"></span>
+    <button class="tlogout" onclick="openChangePw()" style="margin-right:4px" title="Changer mon mot de passe">🔑</button>
     <button class="tlogout" onclick="logout()">Sortir</button>
   </div>
 </div>
@@ -425,11 +424,24 @@ tr.row-rej td{background:#fff8f8}
           <input type="text" id="fr" placeholder="C736944/OD" autocapitalize="characters"></div>
       </div>
       <div class="field" style="margin-bottom:12px">
-        <label>Photo / Scan du Bordereau</label>
-        <div class="upzone" id="upzone-main">
-          <input type="file" id="file-input-main" accept="image/*,application/pdf" capture="environment" onchange="handleUp(event,'main')">
-          <div style="font-size:28px;margin-bottom:6px">📎</div>
-          <div class="uptxt" id="utxt">Appuyez pour photographier ou sélectionner<br><strong>JPG, PNG ou PDF</strong></div>
+        <label>Photo / Scan — Preuve de dépôt</label>
+        <div id="upzone-main" class="upzone" style="padding:16px 12px">
+          <div style="font-size:22px;margin-bottom:6px">📎</div>
+          <div class="uptxt" id="utxt">Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px">
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+              <span style="font-size:22px">🗂️</span>Fichier
+              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="handleUp(event,'main')">
+            </label>
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+              <span style="font-size:22px">🖼️</span>Galerie
+              <input type="file" accept="image/*" style="display:none" onchange="handleUp(event,'main')">
+            </label>
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+              <span style="font-size:22px">📷</span>Caméra
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleUp(event,'main')">
+            </label>
+          </div>
         </div>
       </div>
       <div class="field"><label>Commentaire</label>
@@ -575,7 +587,10 @@ tr.row-rej td{background:#fff8f8}
   <div class="card">
     <div class="chead">
       <div class="ctitle">👥 Utilisateurs enregistrés</div>
-      <span id="user-count" style="font-size:12px;color:var(--muted)"></span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="user-count" style="font-size:12px;color:var(--muted)"></span>
+        <button class="btn bt bsm" onclick="openCreateUser()">➕ Créer un compte</button>
+      </div>
     </div>
     <div style="padding:16px" id="admin-users"></div>
   </div>
@@ -672,7 +687,7 @@ tr.row-rej td{background:#fff8f8}
   <div class="field" style="margin-bottom:12px">
     <label>Rôle</label>
     <select id="edit-user-role">
-      <option value="specialist">📋 Spécialiste Distribution</option>
+      <option value="specialist">📋 Spécialiste/Manager Distribution</option>
       <option value="treasury">💰 Trésorerie</option>
       <option value="accounting">📊 Comptabilité</option>
       <option value="direction">🏢 Direction / Management</option>
@@ -779,6 +794,148 @@ tr.row-rej td{background:#fff8f8}
 </div>
 </div>
 
+
+<!-- MODAL CHANGER MOT DE PASSE -->
+<div class="mbg" id="changepw-modal" onclick="closeChangePw(event)">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <h3>🔑 Changer mon mot de passe</h3>
+  <p>Entrez votre mot de passe actuel puis choisissez un nouveau.</p>
+  <div class="field" style="margin-bottom:12px">
+    <label>Mot de passe actuel <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="cpw-old" placeholder="Mot de passe actuel" autocomplete="current-password">
+      <button class="pw-eye" type="button" onclick="togglePw('cpw-old',this)">👁</button>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:12px">
+    <label>Nouveau mot de passe <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="cpw-new" placeholder="Min. 4 caractères" autocomplete="new-password">
+      <button class="pw-eye" type="button" onclick="togglePw('cpw-new',this)">👁</button>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:0">
+    <label>Confirmer le nouveau mot de passe <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="cpw-new2" placeholder="Répéter le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')doChangePw()">
+      <button class="pw-eye" type="button" onclick="togglePw('cpw-new2',this)">👁</button>
+    </div>
+  </div>
+  <div class="lerr" id="cpw-err"></div>
+  <div class="mact">
+    <button class="btn" style="background:var(--surface2);color:var(--blue);flex:1"
+      onclick="document.getElementById('changepw-modal').classList.remove('on')">Annuler</button>
+    <button class="btn bp" style="flex:1" onclick="doChangePw()">💾 Enregistrer</button>
+  </div>
+</div>
+</div>
+
+
+
+<!-- MODAL CRÉER UTILISATEUR (Admin) -->
+<div class="mbg" id="create-user-modal" onclick="closeCreateUser(event)">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <h3>➕ Créer un compte utilisateur</h3>
+  <p>Créez un compte pour un membre de l'équipe. L'utilisateur devra changer son mot de passe à la première connexion.</p>
+  <div class="field" style="margin-bottom:12px">
+    <label>Prénom et Nom <span style="color:var(--orange)">*</span></label>
+    <input type="text" id="cu-name" placeholder="Ex: Bah Mariama" autocapitalize="words" autocorrect="off">
+  </div>
+  <div class="field" style="margin-bottom:12px">
+    <label>Rôle <span style="color:var(--orange)">*</span></label>
+    <select id="cu-role">
+      <option value="">— Sélectionner le rôle —</option>
+      <option value="specialist">📋 Spécialiste/Manager Distribution</option>
+      <option value="treasury">💰 Trésorerie</option>
+      <option value="accounting">📊 Comptabilité</option>
+      <option value="direction">🏢 Direction / Management</option>
+      <option value="admin">⚙️ Administrateur</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:12px">
+    <label>Mot de passe temporaire <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="cu-pw" placeholder="Min. 4 caractères" autocomplete="new-password">
+      <button class="pw-eye" type="button" onclick="togglePw('cu-pw',this)">👁</button>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:0">
+    <label>Confirmer le mot de passe <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="cu-pw2" placeholder="Répéter le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')doCreateUser()">
+      <button class="pw-eye" type="button" onclick="togglePw('cu-pw2',this)">👁</button>
+    </div>
+  </div>
+  <div class="lerr" id="cu-err"></div>
+  <div style="background:var(--surface2);border-radius:10px;padding:10px 13px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5">
+    🔑 L'utilisateur devra créer un nouveau mot de passe personnel à sa première connexion.
+  </div>
+  <div class="mact">
+    <button class="btn" style="background:var(--surface2);color:var(--blue);flex:1"
+      onclick="document.getElementById('create-user-modal').classList.remove('on')">Annuler</button>
+    <button class="btn bt" style="flex:1" onclick="doCreateUser()">➕ Créer le compte</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL MOT DE PASSE OUBLIÉ -->
+<div class="mbg" id="forgot-modal" onclick="closeForgotModal(event)">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <h3>🔑 Mot de passe oublié</h3>
+  <p>Entrez votre nom d'utilisateur. Votre boîte mail s'ouvrira avec le message déjà préparé — appuyez simplement sur <strong>Envoyer</strong>.</p>
+  <div class="field" style="margin-bottom:14px">
+    <label class="llabel">Votre nom d'utilisateur</label>
+    <input class="linput" type="text" id="forgot-name" placeholder="Entrez votre nom complet"
+      autocapitalize="words" autocorrect="off" spellcheck="false">
+  </div>
+  <div class="lerr" id="forgot-err"></div>
+  <div style="margin-top:14px">
+    <button class="btn bp bfull" style="margin-top:0;font-size:15px" onclick="sendForgotEmail()">
+      ✉️ Envoyer la demande à l'Admin →
+    </button>
+  </div>
+  <div id="forgot-success" style="display:none;margin-top:14px;background:var(--surface2);
+    border:1.5px solid var(--border);border-radius:12px;padding:14px;font-size:13px;
+    color:var(--blue);line-height:1.6;text-align:center">
+    <div style="font-size:22px;margin-bottom:6px">✅</div>
+    <strong>Demande envoyée !</strong><br>
+    L'Admin va réinitialiser votre mot de passe et vous communiquer un mot de passe temporaire.<br>
+    <span style="font-size:12px;color:var(--muted);margin-top:6px;display:block">Une fois reçu, connectez-vous avec ce mot de passe temporaire — l'outil vous demandera d'en créer un nouveau.</span>
+  </div>
+  <div class="mact" style="margin-top:14px">
+    <button class="btn bp" style="width:100%" onclick="document.getElementById('forgot-modal').classList.remove('on')">Fermer</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL FORCER NOUVEAU MOT DE PASSE (mot de passe temporaire détecté) -->
+<div class="mbg" id="force-pw-modal">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <h3>🔐 Créez votre nouveau mot de passe</h3>
+  <p>Vous êtes connecté avec un mot de passe temporaire. Pour continuer, vous devez créer un nouveau mot de passe personnel.</p>
+  <div class="field" style="margin-bottom:12px">
+    <label>Nouveau mot de passe <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="force-pw-new" placeholder="Min. 4 caractères" autocomplete="new-password">
+      <button class="pw-eye" type="button" onclick="togglePw('force-pw-new',this)">👁</button>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:0">
+    <label>Confirmer <span style="color:var(--orange)">*</span></label>
+    <div class="pw-wrap">
+      <input type="password" id="force-pw-new2" placeholder="Répéter le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')doForcePw()">
+      <button class="pw-eye" type="button" onclick="togglePw('force-pw-new2',this)">👁</button>
+    </div>
+  </div>
+  <div class="lerr" id="force-pw-err"></div>
+  <button class="btn bp bfull" onclick="doForcePw()">✅ Définir mon mot de passe</button>
+</div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -828,7 +985,7 @@ function doRegister(){
   const err=document.getElementById('reg-err');
   err.classList.remove('show');
   if(!name){err.textContent='Entrez votre prénom et nom.';err.classList.add('show');return}
-  if(!rl){err.textContent='Sélectionnez votre rôle.';err.classList.add('show');return}
+  if(!rl){err.textContent='Rôle non défini.';err.classList.add('show');return}
   if(pw.length<4){err.textContent='Le mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
   if(pw!==pw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
   if(name.toLowerCase()===ADMIN_NAME.toLowerCase()){err.textContent='Ce nom est réservé.';err.classList.add('show');return}
@@ -851,6 +1008,7 @@ function doLogin(){
   const u=getUsers().find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.pw===hashPw(pw));
   if(!u){err.classList.add('show');return}
   role=u.role;user=u.name;
+  const mustReset=u.mustReset||false;
   document.getElementById('login-pw').value='';
   document.getElementById('login-name').value='';
   buildApp();
@@ -858,6 +1016,13 @@ function doLogin(){
   document.getElementById('app').style.display='block';
   syncUI();
   loadAt();
+  if(mustReset){
+    document.getElementById('force-pw-new').value='';
+    document.getElementById('force-pw-new2').value='';
+    document.getElementById('force-pw-err').classList.remove('show');
+    document.getElementById('force-pw-modal').classList.add('on');
+    return;
+  }
   if(role==='specialist') setTimeout(notifyRejections,700);
 }
 function logout(){
@@ -892,11 +1057,15 @@ function saveEditUser(){
   const idx=users.findIndex(x=>x.name===orig);
   if(idx===-1)return;
   users[idx].role=newRole;
-  if(pw) users[idx].pw=hashPw(pw);
+  if(pw){
+    users[idx].pw=hashPw(pw);
+    // If admin is resetting password for someone else, flag mustReset
+    if(users[idx].name!==user) users[idx].mustReset=true;
+  }
   saveUsers(users);
   document.getElementById('edit-user-modal').classList.remove('on');
   renderAdmin();
-  toast('✅ Utilisateur modifié');
+  toast(pw&&users[idx].name!==user?'✅ Mot de passe réinitialisé — l\'utilisateur devra en créer un nouveau':'✅ Utilisateur modifié');
 }
 function deleteUser(name){
   if(name===ADMIN_NAME){toast('Impossible de supprimer le compte administrateur principal','err');return}
@@ -988,7 +1157,7 @@ function addNewBank(){
 
 /* ══ ROLES CONFIG ══ */
 const ROLES={
-  specialist:{label:'Spécialiste',tabs:[{id:'saisie',lbl:'📤 Saisie'},{id:'rejets',lbl:'⛔ Mes Rejets'}]},
+  specialist:{label:'Spécialiste/Manager Distribution',tabs:[{id:'saisie',lbl:'📤 Saisie'},{id:'rejets',lbl:'⛔ Mes Rejets'}]},
   treasury:{label:'Trésorerie',tabs:[{id:'treasury',lbl:'💰 Validation'},{id:'saisie',lbl:'📤 Saisie'}]},
   accounting:{label:'Comptabilité',tabs:[{id:'accounting',lbl:'📊 Comptabilité'},{id:'treasury',lbl:'📋 Versements'}]},
   direction:{label:'Direction',tabs:[{id:'direction',lbl:'🏢 Direction'},{id:'treasury',lbl:'📋 Versements'},{id:'accounting',lbl:'📊 Comptabilité'}]},
@@ -1116,7 +1285,7 @@ async function submit(){
     toast('✅ Versement enregistré !');all();
   }
   ['fa','fp','fm','fr','fc'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('utxt').innerHTML='Appuyez pour photographier ou sélectionner<br><strong>JPG, PNG ou PDF</strong>';
+  document.getElementById('utxt').innerHTML='Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong>';
   document.getElementById('upzone-main').classList.remove('has-file');
   buildBankSelect('bank-select');
 }
@@ -1148,7 +1317,7 @@ function startCorrection(id){
     document.getElementById('utxt').innerHTML=`<strong>📎 ${existing.name}</strong><br><span style="font-size:11px;color:var(--orange)">Sélectionnez un nouveau fichier pour remplacer</span>`;
     document.getElementById('upzone-main').classList.add('has-file');
   } else {
-    document.getElementById('utxt').innerHTML='Chargez le bordereau corrigé<br><strong>JPG, PNG ou PDF</strong>';
+    document.getElementById('utxt').innerHTML='Chargez la nouvelle preuve de dépôt<br><strong>JPG, PNG ou PDF</strong>';
     document.getElementById('upzone-main').classList.remove('has-file');
   }
   const saisieTab=document.getElementById('tab-btn-saisie');
@@ -1167,7 +1336,7 @@ function clearEditMode(){
   document.getElementById('pg-sub').textContent='Saisir les informations du bordereau reçu du super agent';
   ['fa','fp','fm','fr','fc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fs').value=user;document.getElementById('fd').value=TODAY;
-  document.getElementById('utxt').innerHTML='Appuyez pour photographier ou sélectionner<br><strong>JPG, PNG ou PDF</strong>';
+  document.getElementById('utxt').innerHTML='Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong>';
   document.getElementById('upzone-main').classList.remove('has-file');
   buildBankSelect('bank-select');
 }
@@ -1316,6 +1485,7 @@ function renderAdmin(){
         <div style="flex:1;min-width:0">
           <div class="user-name">${u.name}</div>
           <span class="user-role-tag">${roleIcons[u.role]||'👤'} ${ROLE_LABELS[u.role]||u.role}</span>
+        ${u.mustReset?'<span style="font-size:10px;background:#FFF3CD;color:#856404;border:1px solid #FFD43B;border-radius:20px;padding:2px 8px;display:inline-block;margin-top:4px">🔑 Réinit. en attente</span>':''}
         </div>
       </div>
       <div class="user-actions">
@@ -1558,6 +1728,117 @@ async function updAtFull(dep){
   });}catch(e){console.error(e)}
 }
 setInterval(()=>{if(live)loadAt()},30000);
+
+
+/* ══ CHANGER MOT DE PASSE ══ */
+function openChangePw(){
+  document.getElementById('cpw-old').value='';
+  document.getElementById('cpw-new').value='';
+  document.getElementById('cpw-new2').value='';
+  document.getElementById('cpw-err').classList.remove('show');
+  document.getElementById('changepw-modal').classList.add('on');
+}
+function closeChangePw(e){if(e.target===document.getElementById('changepw-modal'))document.getElementById('changepw-modal').classList.remove('on')}
+function doChangePw(){
+  const oldPw=document.getElementById('cpw-old').value;
+  const newPw=document.getElementById('cpw-new').value;
+  const newPw2=document.getElementById('cpw-new2').value;
+  const err=document.getElementById('cpw-err');
+  err.classList.remove('show');
+  if(!oldPw){err.textContent='Entrez votre mot de passe actuel.';err.classList.add('show');return}
+  const users=getUsers();
+  const u=users.find(x=>x.name===user);
+  if(!u||u.pw!==hashPw(oldPw)){err.textContent='Mot de passe actuel incorrect.';err.classList.add('show');return}
+  if(newPw.length<4){err.textContent='Le nouveau mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
+  if(newPw!==newPw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
+  const idx=users.findIndex(x=>x.name===user);
+  users[idx].pw=hashPw(newPw);
+  saveUsers(users);
+  document.getElementById('changepw-modal').classList.remove('on');
+  toast('✅ Mot de passe modifié avec succès');
+}
+
+
+
+/* ══ CRÉER UTILISATEUR (Admin) ══ */
+function openCreateUser(){
+  document.getElementById('cu-name').value='';
+  document.getElementById('cu-role').value='';
+  document.getElementById('cu-pw').value='';
+  document.getElementById('cu-pw2').value='';
+  document.getElementById('cu-err').classList.remove('show');
+  document.getElementById('create-user-modal').classList.add('on');
+  setTimeout(()=>document.getElementById('cu-name').focus(),300);
+}
+function closeCreateUser(e){if(e.target===document.getElementById('create-user-modal'))document.getElementById('create-user-modal').classList.remove('on')}
+function doCreateUser(){
+  const name=document.getElementById('cu-name').value.trim();
+  const rl=document.getElementById('cu-role').value;
+  const pw=document.getElementById('cu-pw').value;
+  const pw2=document.getElementById('cu-pw2').value;
+  const err=document.getElementById('cu-err');
+  err.classList.remove('show');
+  if(!name){err.textContent='Entrez le prénom et nom.';err.classList.add('show');return}
+  if(!rl){err.textContent='Sélectionnez un rôle.';err.classList.add('show');return}
+  if(pw.length<4){err.textContent='Le mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
+  if(pw!==pw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
+  if(name.toLowerCase()===ADMIN_NAME.toLowerCase()){err.textContent='Ce nom est réservé.';err.classList.add('show');return}
+  const users=getUsers();
+  if(users.find(u=>u.name.toLowerCase()===name.toLowerCase())){err.textContent='Un compte avec ce nom existe déjà.';err.classList.add('show');return}
+  users.push({name,role:rl,pw:hashPw(pw),mustReset:true});
+  saveUsers(users);
+  document.getElementById('create-user-modal').classList.remove('on');
+  renderAdmin();
+  toast(`✅ Compte créé pour ${name} — mot de passe temporaire défini`);
+}
+
+/* ══ MOT DE PASSE OUBLIÉ ══ */
+const ADMIN_EMAIL='mamadou-alseny.diallo@kulu.com';
+
+function openForgotPw(){
+  document.getElementById('forgot-name').value='';
+  document.getElementById('forgot-err').classList.remove('show');
+  document.getElementById('forgot-success').style.display='none';
+  document.getElementById('forgot-modal').classList.add('on');
+}
+function closeForgotModal(e){if(e.target===document.getElementById('forgot-modal'))document.getElementById('forgot-modal').classList.remove('on')}
+
+function validateForgotName(){
+  const name=document.getElementById('forgot-name').value.trim();
+  const err=document.getElementById('forgot-err');
+  err.classList.remove('show');
+  if(!name){err.textContent='Entrez votre nom d\'utilisateur.';err.classList.add('show');return null;}
+  const u=getUsers().find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(!u){err.textContent='Aucun compte trouvé avec ce nom.';err.classList.add('show');return null;}
+  return u.name;
+}
+
+function sendForgotEmail(){
+  const name=validateForgotName();if(!name)return;
+  const sub=encodeURIComponent('DIWALGUI — Réinitialisation mot de passe : '+name);
+  const body=encodeURIComponent('Bonjour,\n\nDemande de réinitialisation de mot de passe DIWALGUI pour l\'utilisateur : '+name+'\n\nMerci de procéder à la réinitialisation et de communiquer le mot de passe temporaire.\n\nCordialement.');
+  const mail=ADMIN_EMAIL||'';
+  window.location.href=`mailto:${mail}?subject=${sub}&body=${body}`;
+  document.getElementById('forgot-success').style.display='block';
+}
+
+/* ══ FORCER NOUVEAU MOT DE PASSE ══ */
+function doForcePw(){
+  const newPw=document.getElementById('force-pw-new').value;
+  const newPw2=document.getElementById('force-pw-new2').value;
+  const err=document.getElementById('force-pw-err');
+  err.classList.remove('show');
+  if(newPw.length<4){err.textContent='Le mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
+  if(newPw!==newPw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
+  const users=getUsers();
+  const idx=users.findIndex(x=>x.name===user);
+  if(idx===-1)return;
+  users[idx].pw=hashPw(newPw);
+  delete users[idx].mustReset;
+  saveUsers(users);
+  document.getElementById('force-pw-modal').classList.remove('on');
+  toast('✅ Mot de passe créé ! Bienvenue sur DIWALGUI.');
+}
 
 /* ══ TOAST ══ */
 function toast(msg,t=''){
