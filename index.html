@@ -353,7 +353,7 @@ tr.row-rej td{background:#fff8f8}
     </div>
   </div>
   <div style="margin-top:16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">
-    <span class="dot live"></span>Synchronisation automatique activée
+    <span class="dot live"></span>Synchronisation en temps réel — données partagées entre tous les appareils
   </div>
 </div>
 </div>
@@ -587,8 +587,9 @@ tr.row-rej td{background:#fff8f8}
   <div class="card">
     <div class="chead">
       <div class="ctitle">👥 Utilisateurs enregistrés</div>
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span id="user-count" style="font-size:12px;color:var(--muted)"></span>
+        <button class="btn bsm" style="background:var(--surface2);color:var(--blue)" onclick="refreshUsers()">🔄</button>
         <button class="btn bt bsm" onclick="openCreateUser()">➕ Créer un compte</button>
       </div>
     </div>
@@ -954,10 +955,68 @@ const ADMIN_PW_DEFAULT='admin2024';
 const ROLE_LABELS={specialist:'Spécialiste',treasury:'Trésorerie',accounting:'Comptabilité',direction:'Direction',admin:'Administrateur'};
 
 function getUsers(){return JSON.parse(localStorage.getItem('diw_users')||'[]')}
-function saveUsers(u){localStorage.setItem('diw_users',JSON.stringify(u))}
+function saveUsers(u){
+  localStorage.setItem('diw_users',JSON.stringify(u));
+  syncUsersToAt(u);
+}
+async function syncUsersToAt(users){
+  if(!atCfg)return;
+  // Push all users to Airtable Utilisateurs table
+  // We do a full replace: fetch existing, delete all, push new
+  // (simple approach for small user list)
+  try{
+    const tbl=encodeURIComponent('Utilisateurs');
+    const base=atCfg.b, key=atCfg.k;
+    // Fetch existing records
+    const r=await fetch(`https://api.airtable.com/v0/${base}/${tbl}`,
+      {headers:{'Authorization':'Bearer '+key}});
+    if(!r.ok)return;
+    const data=await r.json();
+    const existing=(data.records||[]).map(x=>x.id);
+    // Delete all existing
+    for(let i=0;i<existing.length;i+=10){
+      const batch=existing.slice(i,i+10);
+      const qs=batch.map(id=>'records[]='+id).join('&');
+      await fetch(`https://api.airtable.com/v0/${base}/${tbl}?${qs}`,
+        {method:'DELETE',headers:{'Authorization':'Bearer '+key}});
+    }
+    // Push all current users
+    for(let i=0;i<users.length;i+=10){
+      const batch=users.slice(i,i+10).map(u=>({fields:{
+        'Nom':u.name,'Role':u.role,'PwHash':u.pw,'MustReset':u.mustReset?'1':''
+      }}));
+      await fetch(`https://api.airtable.com/v0/${base}/${tbl}`,{
+        method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+        body:JSON.stringify({records:batch})
+      });
+    }
+  }catch(e){console.warn('Users sync error:',e.message)}
+}
+async function loadUsersFromAt(){
+  if(!atCfg)return;
+  try{
+    const tbl=encodeURIComponent('Utilisateurs');
+    const r=await fetch(`https://api.airtable.com/v0/${atCfg.b}/${tbl}`,
+      {headers:{'Authorization':'Bearer '+atCfg.k}});
+    if(!r.ok)return;
+    const data=await r.json();
+    if(!data.records||!data.records.length)return;
+    const users=data.records.map(rec=>({
+      name:rec.fields['Nom']||'',
+      role:rec.fields['Role']||'specialist',
+      pw:rec.fields['PwHash']||'',
+      mustReset:rec.fields['MustReset']==='1'
+    })).filter(u=>u.name&&u.pw);
+    if(users.length>0){
+      localStorage.setItem('diw_users',JSON.stringify(users));
+    }
+  }catch(e){console.warn('Load users error:',e.message)}
+}
 function hashPw(pw){let h=0;for(let i=0;i<pw.length;i++){h=((h<<5)-h)+pw.charCodeAt(i);h|=0}return String(h)}
 
-function initAdmin(){
+async function initAdmin(){
+  // First try to load from Airtable
+  await loadUsersFromAt();
   const users=getUsers();
   if(!users.find(u=>u.name===ADMIN_NAME)){
     users.push({name:ADMIN_NAME,role:'admin',pw:hashPw(ADMIN_PW_DEFAULT)});
@@ -998,13 +1057,20 @@ function doRegister(){
   ['reg-name','reg-pw','reg-pw2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reg-role').value='';
 }
-function doLogin(){
+async function doLogin(){
   const name=document.getElementById('login-name').value.trim();
   const pw=document.getElementById('login-pw').value;
   const err=document.getElementById('login-err');
   err.classList.remove('show');
   if(!name){err.textContent='Entrez votre nom.';err.classList.add('show');return}
   if(!pw){err.textContent='Entrez votre mot de passe.';err.classList.add('show');return}
+  // Show loading
+  const btn=document.querySelector('.lbtn');
+  const orig=btn?btn.textContent:'';
+  if(btn){btn.textContent='Connexion…';btn.disabled=true;}
+  // Sync users from Airtable before authenticating
+  await loadUsersFromAt();
+  if(btn){btn.textContent=orig;btn.disabled=false;}
   const u=getUsers().find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.pw===hashPw(pw));
   if(!u){err.classList.add('show');return}
   role=u.role;user=u.name;
@@ -1727,7 +1793,7 @@ async function updAtFull(dep){
       'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
   });}catch(e){console.error(e)}
 }
-setInterval(()=>{if(live)loadAt()},30000);
+setInterval(()=>{if(live){loadAt();if(user)loadUsersFromAt();}},30000);
 
 
 /* ══ CHANGER MOT DE PASSE ══ */
@@ -1759,6 +1825,15 @@ function doChangePw(){
 }
 
 
+
+
+/* ══ REFRESH USERS FROM AIRTABLE ══ */
+async function refreshUsers(){
+  toast('Synchronisation des utilisateurs…');
+  await loadUsersFromAt();
+  renderAdmin();
+  toast('✅ Utilisateurs synchronisés');
+}
 
 /* ══ CRÉER UTILISATEUR (Admin) ══ */
 function openCreateUser(){
@@ -1848,7 +1923,9 @@ function toast(msg,t=''){
 }
 
 /* ══ INIT ══ */
-initAdmin();
+initAdmin().then(()=>{
+  // Admin initialized and synced
+});
 /* Airtable connecté automatiquement */
 </script>
 </body>
