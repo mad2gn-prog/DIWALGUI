@@ -987,12 +987,11 @@ function saveUsers(u){
 /* ══ USERS SYNC via Airtable (same table, special record) ══ */
 let _usersAtId=null;
 
-async function atFetch(path,opts={}){
-  const url='https://api.airtable.com/v0/'+atCfg.b+'/'+encodeURIComponent(atCfg.t)+path;
-  const headers={'Authorization':'Bearer '+atCfg.k};
-  if(opts.body) headers['Content-Type']='application/json';
-  const {headers:_h,...rest}=opts;
-  return fetch(url,{...rest,headers});
+async function atFetch(path,method,body){
+  const url='https://api.airtable.com/v0/'+AT_BASE+'/'+encodeURIComponent(AT_TABLE)+path;
+  const opts={method:method||'GET',headers:{'Authorization':'Bearer '+AT_KEY}};
+  if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  return fetch(url,opts);
 }
 
 async function pushUsersToAt(users){
@@ -1000,17 +999,17 @@ async function pushUsersToAt(users){
   const val=JSON.stringify(users);
   try{
     if(_usersAtId){
-      await atFetch('/'+_usersAtId,{method:'PATCH',body:JSON.stringify({fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}})});
+      await atFetch('/'+_usersAtId,'PATCH',{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}});
     } else {
       // search first
-      const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22');
+      const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22','GET');
       if(!r.ok)return;
       const d=await r.json();
       if(d.records&&d.records.length){
         _usersAtId=d.records[0].id;
-        await atFetch('/'+_usersAtId,{method:'PATCH',body:JSON.stringify({fields:{Agent:val}})});
+        await atFetch('/'+_usersAtId,'PATCH',{fields:{Agent:val}});
       } else {
-        const cr=await atFetch('',{method:'POST',body:JSON.stringify({records:[{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}}]})});
+        const cr=await atFetch('','POST',{records:[{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}}]});
         if(cr.ok){const cd=await cr.json();if(cd.records&&cd.records[0])_usersAtId=cd.records[0].id;}
       }
     }
@@ -1020,7 +1019,7 @@ async function pushUsersToAt(users){
 async function loadUsersFromAt(){
   if(!atCfg)return false;
   try{
-    const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22');
+    const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22','GET');
     if(!r.ok)return false;
     const d=await r.json();
     if(!d.records||!d.records.length)return true;
@@ -1773,10 +1772,9 @@ function syncUI(){
   if(ban)ban.style.display='none';
 }
 async function pushAt(dep){
-  if(!atCfg){deps.unshift(dep);return true;}
   try{
-    const r=await fetch(`https://api.airtable.com/v0/${atCfg.b}/${encodeURIComponent(atCfg.t)}`,{
-      method:'POST',headers:{'Authorization':`Bearer ${atCfg.k}`,'Content-Type':'application/json'},
+    const r=await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+encodeURIComponent(AT_TABLE),{
+      method:'POST',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({fields:{'ID':dep.id,'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
         'Montant':dep.amount,'Date':dep.date,'Référence':dep.ref,'Spécialiste':dep.spec,
         'Statut':dep.status,'Commentaire':dep.comment,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
@@ -1794,10 +1792,9 @@ async function pushAt(dep){
   }
 }
 async function loadAt(){
-  if(!atCfg)return;
   try{
-    const r=await fetch(`https://api.airtable.com/v0/${atCfg.b}/${encodeURIComponent(atCfg.t)}?sort[0][field]=Date&sort[0][direction]=desc`,
-      {headers:{'Authorization':`Bearer ${atCfg.k}`}});
+    const r=await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+encodeURIComponent(AT_TABLE)+'?sort[0][field]=Date&sort[0][direction]=desc',
+      {headers:{'Authorization':'Bearer '+AT_KEY}});
     if(!r.ok){console.warn('Airtable error:',r.status);return;}
     const data=await r.json();
     if(data.records){
@@ -1814,16 +1811,16 @@ async function loadAt(){
   }catch(e){/* silent - network issue */}
 }
 async function updAt(dep){
-  if(!atCfg||!dep._id)return;
-  try{await fetch(`https://api.airtable.com/v0/${atCfg.b}/${encodeURIComponent(atCfg.t)}/${dep._id}`,{
-    method:'PATCH',headers:{'Authorization':`Bearer ${atCfg.k}`,'Content-Type':'application/json'},
+  if(!dep._id)return;
+  try{await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+encodeURIComponent(AT_TABLE)+'/'+dep._id,{
+    method:'PATCH',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
     body:JSON.stringify({fields:{'Statut':dep.status,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
   });}catch(e){console.error(e)}
 }
 async function updAtFull(dep){
-  if(!atCfg||!dep._id)return;
-  try{await fetch(`https://api.airtable.com/v0/${atCfg.b}/${encodeURIComponent(atCfg.t)}/${dep._id}`,{
-    method:'PATCH',headers:{'Authorization':`Bearer ${atCfg.k}`,'Content-Type':'application/json'},
+  if(!dep._id)return;
+  try{await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+encodeURIComponent(AT_TABLE)+'/'+dep._id,{
+    method:'PATCH',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
     body:JSON.stringify({fields:{'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
       'Montant':dep.amount,'Date':dep.date,'Référence':dep.ref,'Spécialiste':dep.spec,
       'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
