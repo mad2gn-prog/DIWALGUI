@@ -1002,7 +1002,7 @@ async function pushUsersToAt(users){
       await atFetch('/'+_usersAtId,'PATCH',{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}});
     } else {
       // search first
-      const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22','GET');
+      const r=await atFetch('?filterByFormula=%7BID%7D%3D%22__USERS__%22','GET');
       if(!r.ok)return;
       const d=await r.json();
       if(d.records&&d.records.length){
@@ -1019,7 +1019,7 @@ async function pushUsersToAt(users){
 async function loadUsersFromAt(){
   if(!atCfg)return false;
   try{
-    const r=await atFetch('?filterByFormula=ID%3D%22__USERS__%22','GET');
+    const r=await atFetch('?filterByFormula=%7BID%7D%3D%22__USERS__%22','GET');
     if(!r.ok)return false;
     const d=await r.json();
     if(!d.records||!d.records.length)return true;
