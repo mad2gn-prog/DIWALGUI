@@ -389,27 +389,31 @@ tr.row-rej td{background:#fff8f8}
       </div>
       <div class="fgrid">
         <div class="field"><label>Montant Versé (GNF) <span class="req">*</span></label>
-          <input type="number" id="fm" placeholder="100000000" inputmode="numeric"></div>
+          <input type="text" id="fm" placeholder="Ex: 5 000 000" inputmode="numeric"
+            oninput="fmtAmountInput(this)" autocomplete="off"></div>
         <div class="field"><label>Référence Bordereau</label>
           <input type="text" id="fr" placeholder="C736944/OD" autocapitalize="characters"></div>
       </div>
       <div class="field" style="margin-bottom:12px">
         <label>Photo / Scan — Preuve de dépôt</label>
-        <div id="upzone-main" class="upzone" style="padding:16px 12px">
+        <div id="upzone-main" class="upzone" style="padding:16px 12px;cursor:default">
           <div style="font-size:22px;margin-bottom:6px">📎</div>
-          <div class="uptxt" id="utxt">Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong></div>
+          <div class="uptxt" id="utxt">Sélectionnez la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px">
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
-              <span style="font-size:22px">🗂️</span>Fichier
-              <input type="file" accept="image/*,application/pdf,.pdf" style="display:none" onchange="handleUp(event,'main')">
+            <label style="position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation;min-height:70px;overflow:hidden">
+              <span style="font-size:24px;pointer-events:none">🗂️</span>
+              <span style="pointer-events:none">Fichier</span>
+              <input type="file" accept="image/*,application/pdf,.pdf" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:100px" onchange="handleUp(event,'main')">
             </label>
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
-              <span style="font-size:22px">🖼️</span>Galerie
-              <input type="file" accept="image/*" style="display:none" onchange="handleUp(event,'main')">
+            <label style="position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation;min-height:70px;overflow:hidden">
+              <span style="font-size:24px;pointer-events:none">🖼️</span>
+              <span style="pointer-events:none">Galerie</span>
+              <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:100px" onchange="handleUp(event,'main')">
             </label>
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
-              <span style="font-size:22px">📷</span>Caméra
-              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleUp(event,'main')">
+            <label style="position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation;min-height:70px;overflow:hidden">
+              <span style="font-size:24px;pointer-events:none">📷</span>
+              <span style="pointer-events:none">Caméra</span>
+              <input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:100px" onchange="handleUp(event,'main')">
             </label>
           </div>
         </div>
@@ -1292,6 +1296,19 @@ function setPeriodDi(mode,btn){
 }
 function getFilteredDeps(page){const s=periodState[page]||{from:'',to:''};return deps.filter(d=>d.ref!=='__USERS__'&&d.comment!=='__CONFIG__'&&inPeriod(d.date,s.from,s.to));}
 
+
+/* ══ FORMAT MONTANT ══ */
+function fmtAmountInput(inp){
+  const raw=inp.value.replace(/\D/g,'');
+  inp.value=raw?Number(raw).toLocaleString('fr-FR'):'';
+  inp.dataset.raw=raw;
+}
+function getAmountValue(){
+  const inp=document.getElementById('fm');
+  const raw=inp.dataset.raw||inp.value.replace(/\s/g,'').replace(/ /g,'').replace(/,/g,'');
+  return parseFloat(raw)||0;
+}
+
 /* ══ UPLOAD ══ */
 function handleUp(e,context){
   const f=e.target.files[0];if(!f)return;
@@ -1315,7 +1332,7 @@ function handleUp(e,context){
 async function submit(){
   const a=document.getElementById('fa').value.trim();
   const p=document.getElementById('fp').value.trim();
-  const m=parseFloat(document.getElementById('fm').value);
+  const m=getAmountValue();
   const d=document.getElementById('fd').value;
   const s=document.getElementById('fs').value.trim()||user;
   const bk=document.getElementById('bank-select').value;
@@ -1341,7 +1358,7 @@ async function submit(){
     else deps.unshift(dep);
     toast('✅ Versement enregistré !');all();
   }
-  ['fa','fp','fm','fr','fc'].forEach(id=>document.getElementById(id).value='');
+  ['fa','fp','fr','fc'].forEach(id=>document.getElementById(id).value='');document.getElementById('fm').value='';document.getElementById('fm').dataset.raw='';
   document.getElementById('utxt').innerHTML='Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong>';
   document.getElementById('upzone-main').classList.remove('has-file');
   buildBankSelect('bank-select');
@@ -1352,7 +1369,7 @@ function startCorrection(id){
   const dep=deps.find(x=>x.id===id);if(!dep)return;
   document.getElementById('fa').value=dep.agent;
   document.getElementById('fp').value=dep.phone;
-  document.getElementById('fm').value=dep.amount;
+  document.getElementById('fm').value=Number(dep.amount).toLocaleString('fr-FR');document.getElementById('fm').dataset.raw=String(dep.amount);
   document.getElementById('fd').value=dep.date;
   document.getElementById('fr').value=dep.ref==='—'?'':dep.ref;
   document.getElementById('fc').value=dep.comment;
@@ -1391,7 +1408,7 @@ function clearEditMode(){
   document.getElementById('cancel-btn').style.display='none';
   document.getElementById('pg-title').textContent='Nouveau Versement';
   document.getElementById('pg-sub').textContent='Saisir les informations du bordereau reçu du super agent';
-  ['fa','fp','fm','fr','fc'].forEach(id=>document.getElementById(id).value='');
+  ['fa','fp','fr','fc'].forEach(id=>document.getElementById(id).value='');document.getElementById('fm').value='';document.getElementById('fm').dataset.raw='';
   document.getElementById('fs').value=user;document.getElementById('fd').value=TODAY;
   document.getElementById('utxt').innerHTML='Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong>';
   document.getElementById('upzone-main').classList.remove('has-file');
