@@ -1070,7 +1070,7 @@ function openEditUser(name){
   document.getElementById('edit-user-modal').classList.add('on');
 }
 function closeEditUser(e){if(e.target===document.getElementById('edit-user-modal'))document.getElementById('edit-user-modal').classList.remove('on')}
-function saveEditUser(){
+async function saveEditUser(){
   const orig=document.getElementById('edit-user-name-orig').value;
   const newRole=document.getElementById('edit-user-role').value;
   const pw=document.getElementById('edit-user-pw').value;
@@ -1085,13 +1085,13 @@ function saveEditUser(){
   users[idx].role=newRole;
   if(pw){
     users[idx].pw=hashPw(pw);
-    // If admin is resetting password for someone else, flag mustReset
     if(users[idx].name!==user) users[idx].mustReset=true;
   }
-  saveUsers(users);
+  localStorage.setItem('diw_users',JSON.stringify(users));
+  await pushUsersToAt(users);
   document.getElementById('edit-user-modal').classList.remove('on');
   renderAdmin();
-  toast(pw&&users[idx].name!==user?'✅ Mot de passe réinitialisé — l\'utilisateur devra en créer un nouveau':'✅ Utilisateur modifié');
+  toast(pw&&users[idx].name!==user?'✅ Mot de passe réinitialisé':'✅ Utilisateur modifié');
 }
 function deleteUser(name){
   if(name===ADMIN_NAME){toast('Impossible de supprimer le compte administrateur principal','err');return}
@@ -1836,10 +1836,13 @@ async function doCreateUser(){
   const users=getUsers();
   if(users.find(u=>u.name.toLowerCase()===name.toLowerCase())){err.textContent='Un compte avec ce nom existe déjà.';err.classList.add('show');return}
   users.push({name,role:rl,pw:hashPw(pw),mustReset:true});
-  saveUsers(users); // Syncs to Airtable
+  localStorage.setItem('diw_users',JSON.stringify(users));
+  if(cuBtn){cuBtn.textContent='⏳ Synchronisation…';cuBtn.disabled=true;}
+  await pushUsersToAt(users);
+  if(cuBtn){cuBtn.textContent='➕ Créer le compte';cuBtn.disabled=false;}
   document.getElementById('create-user-modal').classList.remove('on');
   renderAdmin();
-  toast('✅ Compte créé pour '+name+' — synchronisé sur Airtable');
+  toast('✅ Compte créé pour '+name+' — disponible sur tous les appareils');
 }
 
 /* ══ MOT DE PASSE OUBLIÉ ══ */
