@@ -399,17 +399,17 @@ tr.row-rej td{background:#fff8f8}
           <div style="font-size:22px;margin-bottom:6px">📎</div>
           <div class="uptxt" id="utxt">Appuyez pour ajouter la preuve de dépôt<br><strong>JPG, PNG ou PDF acceptés</strong></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px">
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation" onclick="this.querySelector('input').click();return false;">
               <span style="font-size:22px">🗂️</span>Fichier
-              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="handleUp(event,'main')">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0" onchange="handleUp(event,'main')">
             </label>
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation" onclick="this.querySelector('input').click();return false;">
               <span style="font-size:22px">🖼️</span>Galerie
-              <input type="file" accept="image/*" style="display:none" onchange="handleUp(event,'main')">
+              <input type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0" onchange="handleUp(event,'main')">
             </label>
-            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation">
+            <label style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;font-size:11px;font-weight:600;color:var(--blue);touch-action:manipulation" onclick="this.querySelector('input').click();return false;">
               <span style="font-size:22px">📷</span>Caméra
-              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleUp(event,'main')">
+              <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0" onchange="handleUp(event,'main')">
             </label>
           </div>
         </div>
@@ -429,6 +429,33 @@ tr.row-rej td{background:#fff8f8}
   <div class="ptitle">Mes Versements Rejetés</div>
   <div class="psub">Versements refusés par la Trésorerie — corrigez et soumettez à nouveau</div>
   <div id="rejets-list"></div>
+</div>
+
+<!-- PAGE MES VERSEMENTS (Spécialiste) -->
+<div class="page" id="page-mes-versements">
+  <div class="ptitle">Mes Versements</div>
+  <div class="psub">Suivi de toutes vos soumissions et leur statut</div>
+  <div class="sgrid" id="mv-stats"></div>
+  <div class="card">
+    <div class="chead">
+      <div class="ctitle">📋 Historique de mes versements</div>
+    </div>
+    <div class="fbar">
+      <select id="mv-stat" onchange="renderMesVersionments()">
+        <option value="">Tous les statuts</option>
+        <option value="En attente">⏳ En attente</option>
+        <option value="Validé">✅ Validé</option>
+        <option value="Rejeté">⛔ Rejeté</option>
+      </select>
+    </div>
+    <div class="twrap"><table>
+      <thead><tr>
+        <th>Date</th><th>Agent</th><th>Banque</th>
+        <th>Montant (GNF)</th><th>Réf.</th><th>Bordereau</th><th>Statut</th><th>Détail</th>
+      </tr></thead>
+      <tbody id="mv-body"></tbody>
+    </table></div>
+  </div>
 </div>
 
 <!-- PAGE TRESORERIE -->
@@ -1183,7 +1210,7 @@ function addNewBank(){
 
 /* ══ ROLES CONFIG ══ */
 const ROLES={
-  specialist:{label:'Spécialiste/Manager Distribution',tabs:[{id:'saisie',lbl:'📤 Saisie'},{id:'rejets',lbl:'⛔ Mes Rejets'}]},
+  specialist:{label:'Spécialiste/Manager Distribution',tabs:[{id:'saisie',lbl:'📤 Saisie'},{id:'mes-versements',lbl:'📋 Mes Versements'},{id:'rejets',lbl:'⛔ Mes Rejets'}]},
   treasury:{label:'Trésorerie',tabs:[{id:'treasury',lbl:'💰 Validation'},{id:'saisie',lbl:'📤 Saisie'}]},
   accounting:{label:'Comptabilité',tabs:[{id:'accounting',lbl:'📊 Comptabilité'},{id:'treasury',lbl:'📋 Versements'}]},
   direction:{label:'Direction',tabs:[{id:'direction',lbl:'🏢 Direction'},{id:'treasury',lbl:'📋 Versements'},{id:'accounting',lbl:'📊 Comptabilité'}]},
@@ -1273,9 +1300,13 @@ function handleUp(e,context){
   reader.onload=ev=>{
     fileStore[id]={dataUrl:ev.target.result,name:f.name,type:f.type};
     if(context==='main'){
-      document.getElementById('utxt').innerHTML=`<strong>✅ ${f.name}</strong>`;
+      const fname=f.name.length>30?f.name.substring(0,27)+'...':f.name;
+      document.getElementById('utxt').innerHTML=`<strong>✅ ${fname}</strong><br><span style="font-size:11px;color:var(--green)">${(f.size/1024).toFixed(0)} KB — ${f.type||'fichier'}</span>`;
       document.getElementById('upzone-main').classList.add('has-file');
     }
+  };
+  reader.onerror=()=>{
+    if(context==='main') toast('Erreur lors du chargement du fichier','err');
   };
   reader.readAsDataURL(f);
 }
@@ -1369,8 +1400,8 @@ function clearEditMode(){
 
 /* ══ BORDEREAU ══ */
 function viewBordereau(id){
-  const dep=deps.find(x=>x.id===id);if(!dep)return;
-  const file=fileStore[id];
+  const dep=deps.find(x=>x.id===id||x._id===id);if(!dep)return;
+  const file=fileStore[dep.id]||fileStore[dep._id]||fileStore[id];
   document.getElementById('brd-title').textContent=`${dep.agent} — ${dep.ref}`;
   const body=document.getElementById('brd-body');
   const dlBtn=document.getElementById('brd-dl-btn');
@@ -1392,7 +1423,7 @@ function closeBrdModal(e){if(e.target===document.getElementById('brd-modal'))doc
 const CHR=['#00C2CB','#0B2D6E','#00C896','#FF7A2F','#6B7FA3','#9b59b6','#e74c3c','#1abc9c','#e67e22','#3498db','#2ecc71','#e91e63','#ff9800'];
 function fmt(n){return Number(n).toLocaleString('fr-FR')}
 function sc(s){return{'En attente':'bp-','Validé':'bd','Rejeté':'brej'}[s]||'bp-'}
-function all(){stats();rtbl();rtblAdmin();compta();direction();renderRejets();renderAdmin();buildFilterBank();updateRejBadge()}
+function all(){stats();rtbl();rtblAdmin();compta();direction();renderRejets();renderAdmin();renderMesVersionments();buildFilterBank();updateRejBadge()}
 
 function stats(){
   const pg=document.querySelector('.page.on');
@@ -1573,6 +1604,57 @@ function det(id){
   document.getElementById('det-modal').classList.add('on');
 }
 function closeDet(e){if(e.target===document.getElementById('det-modal'))document.getElementById('det-modal').classList.remove('on')}
+
+
+/* ══ MES VERSEMENTS (Spécialiste) ══ */
+function renderMesVersionments(){
+  const fst=(document.getElementById('mv-stat')||{value:''}).value;
+  const myDeps=deps.filter(d=>d.spec===user&&(!fst||d.status===fst));
+
+  // Stats
+  const stats=document.getElementById('mv-stats');
+  if(stats){
+    const tot=myDeps.length;
+    const val=myDeps.filter(d=>d.status==='Validé').length;
+    const pen=myDeps.filter(d=>d.status==='En attente').length;
+    const rej=myDeps.filter(d=>d.status==='Rejeté').length;
+    stats.innerHTML=[
+      {lbl:'Total soumis',val:tot,c:'c-blue'},
+      {lbl:'Validés',val:val,c:'c-green'},
+      {lbl:'En attente',val:pen,c:'c-orange'},
+      {lbl:'Rejetés',val:rej,c:'c-red'},
+    ].map(s=>`<div class="scard"><div class="slabel">${s.lbl}</div><div class="sval ${s.c}">${s.val}</div></div>`).join('');
+  }
+
+  const el=document.getElementById('mv-body');
+  if(!el)return;
+  if(!myDeps.length){
+    el.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Aucun versement soumis</td></tr>`;
+    return;
+  }
+  el.innerHTML=myDeps.map(d=>{
+    const hasFile=!!fileStore[d.id]||!!fileStore[d._id];
+    const brdBtn=hasFile
+      ?`<button class="btn bt bsm" onclick="viewBordereau('${d.id}')">📎 Voir</button>`
+      :`<span style="color:var(--muted);font-size:11px">Non joint</span>`;
+    const statusIcon={'En attente':'⏳','Validé':'✅','Rejeté':'⛔'}[d.status]||'';
+    const motifHtml=d.status==='Rejeté'&&d.motif
+      ?`<div style="font-size:10px;color:var(--red);margin-top:3px;max-width:160px;white-space:normal;line-height:1.4">⛔ ${d.motif}</div>`:'';
+    return`<tr class="${d.status==='Rejeté'?'row-rej':''}">
+      <td>${d.date}</td>
+      <td><strong>${d.agent}</strong></td>
+      <td>${d.bank}</td>
+      <td class="amt">${fmt(d.amount)}</td>
+      <td class="mono" style="color:var(--muted)">${d.ref}</td>
+      <td>${brdBtn}</td>
+      <td><span class="badge ${sc(d.status)}">${statusIcon} ${d.status}</span>${motifHtml}</td>
+      <td>
+        <button class="btn bt bsm" onclick="det('${d.id}')">👁</button>
+        ${d.status==='Rejeté'?`<button class="btn bo bsm" onclick="startCorrection('${d.id}')" style="margin-left:3px">✏️</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
 
 /* ══ MES REJETS ══ */
 function renderRejets(){
