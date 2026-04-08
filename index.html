@@ -304,10 +304,7 @@ tr.row-rej td{background:#fff8f8}
 <div class="lbox">
   <div class="llogo">DIWALGUI</div>
   <div class="lsub">Deposit Management System</div>
-  <div class="ltabs">
-    <button class="ltab on" id="tab-login" onclick="switchAuthTab('login')">🔑 Connexion</button>
-    <button class="ltab" id="tab-register" onclick="switchAuthTab('register')">➕ Créer un compte</button>
-  </div>
+
   <div id="panel-login">
     <label class="llabel">Votre nom d'utilisateur</label>
     <input class="linput" type="text" id="login-name" placeholder="Entrez votre nom complet"
@@ -323,34 +320,7 @@ tr.row-rej td{background:#fff8f8}
     <div class="lhint" style="margin-top:10px">
       <a onclick="openForgotPw()" style="color:var(--muted);cursor:pointer;font-size:12px;text-decoration:underline">Mot de passe oublié ?</a>
     </div>
-    <div class="lhint" style="margin-top:6px">
-      Pas encore de compte ?<br>
-      <a onclick="switchAuthTab('register')" style="color:var(--teal);cursor:pointer;font-weight:700">Créer un compte →</a>
-    </div>
-  </div>
-  <div id="panel-register" style="display:none">
-    <label class="llabel">Prénom et Nom <span style="color:var(--orange)">*</span></label>
-    <input class="linput" type="text" id="reg-name" placeholder="Ex: Doukoure Mohamed"
-      autocomplete="name" autocapitalize="words">
 
-    <input type="hidden" id="reg-role" value="specialist">
-    <label class="llabel">Mot de passe <span style="color:var(--orange)">*</span></label>
-    <div class="pw-wrap">
-      <input class="linput" type="password" id="reg-pw" placeholder="Min. 4 caractères"
-        autocomplete="new-password">
-      <button class="pw-eye" type="button" onclick="togglePw('reg-pw',this)">👁</button>
-    </div>
-    <label class="llabel">Confirmer le mot de passe <span style="color:var(--orange)">*</span></label>
-    <div class="pw-wrap">
-      <input class="linput" type="password" id="reg-pw2" placeholder="Répéter le mot de passe"
-        autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
-      <button class="pw-eye" type="button" onclick="togglePw('reg-pw2',this)">👁</button>
-    </div>
-    <div class="lerr" id="reg-err"></div>
-    <button class="lbtn" onclick="doRegister()">Créer mon compte →</button>
-    <div class="lhint">Déjà un compte ?<br>
-      <a onclick="switchAuthTab('login')" style="color:var(--teal);cursor:pointer;font-weight:700">← Se connecter</a>
-    </div>
   </div>
   <div style="margin-top:16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px" id="sync-status">
     <span class="dot live" id="sync-dot"></span><span id="sync-msg">Vérification de la connexion…</span>
@@ -886,7 +856,7 @@ tr.row-rej td{background:#fff8f8}
 <div class="modal">
   <div class="modal-handle"></div>
   <h3>🔑 Mot de passe oublié</h3>
-  <p>Entrez votre nom d'utilisateur. Votre boîte mail s'ouvrira avec le message déjà préparé — appuyez simplement sur <strong>Envoyer</strong>.</p>
+  <p>Entrez votre nom. Votre boîte mail s'ouvrira avec un message prêt à envoyer à l'Admin qui réinitialisera votre mot de passe.</p>
   <div class="field" style="margin-bottom:14px">
     <label class="llabel">Votre nom d'utilisateur</label>
     <input class="linput" type="text" id="forgot-name" placeholder="Entrez votre nom complet"
@@ -942,7 +912,7 @@ tr.row-rej td{background:#fff8f8}
 <script>
 const TODAY=new Date().toISOString().split('T')[0];
 let role='',user='',selectedMotif='',exportMode='',confirmAction=null;
-const AT_KEY='pat495186rKZqqvwd.d6bf7d7d0e11ea340cc5e89e5269d7e9afbab977630dd9cb13ce8e15e98f51e6';const AT_BASE='appc7RsAToqeLfjQj';const AT_TABLE='tblzkTM46S1K8vy5o';let atCfg={k:AT_KEY,b:AT_BASE,t:AT_TABLE};
+const AT_KEY='pat495186rKZqqvwd.7da9520862cb7a11c05a4d2bdae2af92b5e0604d715b421921ae47436323ce7b';const AT_BASE='appc7RsAToqeLfjQj';const AT_TABLE='tblzkTM46S1K8vy5o';let atCfg={k:AT_KEY,b:AT_BASE,t:AT_TABLE};
 let live=true;
 let periodState={treasury:{mode:'all',from:'',to:''},accounting:{mode:'all',from:'',to:''},direction:{mode:'all',from:'',to:''}};
 let fileStore={};
@@ -1039,43 +1009,12 @@ async function loadUsersFromAt(){
 
 
 function switchAuthTab(t){
-  document.getElementById('tab-login').classList.toggle('on',t==='login');
-  document.getElementById('tab-register').classList.toggle('on',t==='register');
-  document.getElementById('panel-login').style.display=t==='login'?'block':'none';
-  document.getElementById('panel-register').style.display=t==='register'?'block':'none';
   document.getElementById('login-err').classList.remove('show');
-  document.getElementById('reg-err').classList.remove('show');
 }
 function togglePw(id,btn){
   const inp=document.getElementById(id);
   inp.type=inp.type==='password'?'text':'password';
   btn.textContent=inp.type==='text'?'🙈':'👁';
-}
-async function doRegister(){
-  const name=document.getElementById('reg-name').value.trim();
-  const rl=document.getElementById('reg-role').value;
-  const pw=document.getElementById('reg-pw').value;
-  const pw2=document.getElementById('reg-pw2').value;
-  const err=document.getElementById('reg-err');
-  err.classList.remove('show');
-  if(!name){err.textContent='Entrez votre prénom et nom.';err.classList.add('show');return}
-  if(!rl){err.textContent='Rôle non défini.';err.classList.add('show');return}
-  if(pw.length<4){err.textContent='Le mot de passe doit contenir au moins 4 caractères.';err.classList.add('show');return}
-  if(pw!==pw2){err.textContent='Les mots de passe ne correspondent pas.';err.classList.add('show');return}
-  if(name.toLowerCase()===ADMIN_NAME.toLowerCase()){err.textContent='Ce nom est réservé.';err.classList.add('show');return}
-  const btn=document.querySelectorAll('.lbtn')[1]||document.querySelector('.lbtn');
-  if(btn){btn.textContent='⏳ Création…';btn.disabled=true;}
-  await loadUsersFromAt();
-  if(btn){btn.textContent='Créer mon compte →';btn.disabled=false;}
-  const users=getUsers();
-  if(users.find(u=>u.name.toLowerCase()===name.toLowerCase())){err.textContent='Un compte avec ce nom existe déjà.';err.classList.add('show');return}
-  users.push({name,role:rl,pw:hashPw(pw)});
-  saveUsers(users);
-  toast('✅ Compte créé ! Connectez-vous maintenant.');
-  switchAuthTab('login');
-  document.getElementById('login-name').value=name;
-  ['reg-name','reg-pw','reg-pw2'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('reg-role').value='';
 }
 async function doLogin(){
   const name=document.getElementById('login-name').value.trim();
@@ -1960,9 +1899,11 @@ function toast(msg,t=''){
 }
 
 /* ══ INIT ══ */
-initAdmin().then(()=>{
-  // Admin initialized and synced
-});
+// Clear any old test data from localStorage
+localStorage.removeItem('diw_users');
+localStorage.removeItem('diw_banks');
+// Initialize fresh
+initAdmin().then(()=>{});
 /* Airtable connecté automatiquement */
 </script>
 </body>
