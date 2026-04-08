@@ -972,14 +972,14 @@ async function pushUsersToAt(users){
       await atFetch('/'+_usersAtId,'PATCH',{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}});
     } else {
       // search first
-      const r=await atFetch('?filterByFormula=%7BID%7D%3D%22__USERS__%22','GET');
+      const r=await atFetch('?filterByFormula=%7BR%C3%A9f%C3%A9rence%7D%3D%22__USERS__%22','GET');
       if(!r.ok)return;
       const d=await r.json();
       if(d.records&&d.records.length){
         _usersAtId=d.records[0].id;
         await atFetch('/'+_usersAtId,'PATCH',{fields:{Agent:val}});
       } else {
-        const cr=await atFetch('','POST',{records:[{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}}]});
+        const cr=await atFetch('','POST',{records:[{fields:{'Référence':'__USERS__','Agent':val,'Statut':'__CONFIG__'}}]});
         if(cr.ok){const cd=await cr.json();if(cd.records&&cd.records[0])_usersAtId=cd.records[0].id;}
       }
     }
@@ -989,7 +989,7 @@ async function pushUsersToAt(users){
 async function loadUsersFromAt(){
   if(!atCfg)return false;
   try{
-    const r=await atFetch('?filterByFormula=%7BID%7D%3D%22__USERS__%22','GET');
+    const r=await atFetch('?filterByFormula=%7BR%C3%A9f%C3%A9rence%7D%3D%22__USERS__%22','GET');
     if(!r.ok)return false;
     const d=await r.json();
     if(!d.records||!d.records.length)return true;
@@ -1264,7 +1264,7 @@ function setPeriodDi(mode,btn){
   periodState.direction.from=r.from;periodState.direction.to=r.to;
   setPeriodBtns('di-pb-',btn.id);showCustomDates('di',mode==='custom');all();
 }
-function getFilteredDeps(page){const s=periodState[page]||{from:'',to:''};return deps.filter(d=>d.id!=='__USERS__'&&d.status!=='__CONFIG__'&&inPeriod(d.date,s.from,s.to));}
+function getFilteredDeps(page){const s=periodState[page]||{from:'',to:''};return deps.filter(d=>d.status!=='__CONFIG__'&&d.ref!=='__USERS__'&&inPeriod(d.date,s.from,s.to));}
 
 /* ══ UPLOAD ══ */
 function handleUp(e,context){
@@ -1423,7 +1423,7 @@ function rtbl(){
   const canBrd=['treasury','direction','accounting','admin'].includes(role);
   const ps=periodState.treasury;
   const data=deps.filter(d=>{
-    if(d.id==='__USERS__'||d.status==='__CONFIG__')return false;
+    if(d.ref==='__USERS__'||d.status==='__CONFIG__')return false;
     const ms=!q||[d.agent,d.phone,d.ref,d.spec].join(' ').toLowerCase().includes(q);
     return ms&&(!fb||d.bank===fb)&&(!fst||d.status===fst)&&inPeriod(d.date,ps.from,ps.to);
   });
@@ -1436,7 +1436,7 @@ function rtblAdmin(){
   const q=(document.getElementById('adm-q')||{value:''}).value.toLowerCase();
   const fst=(document.getElementById('adm-stat')||{value:''}).value;
   const data=deps.filter(d=>{
-    if(d.id==='__USERS__'||d.status==='__CONFIG__')return false;
+    if(d.ref==='__USERS__'||d.status==='__CONFIG__')return false;
     const ms=!q||[d.agent,d.phone,d.ref,d.spec].join(' ').toLowerCase().includes(q);
     return ms&&(!fst||d.status===fst);
   });
@@ -1714,9 +1714,9 @@ async function pushAt(dep){
   try{
     const r=await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+AT_TABLE,{
       method:'POST',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({fields:{'ID':dep.id,'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
-        'Montant':dep.amount,'Date':dep.date,'Référence':dep.ref,'Spécialiste':dep.spec,
-        'Statut':dep.status,'Commentaire':dep.comment,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
+      body:JSON.stringify({fields:{'Référence':dep.ref||dep.id,'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
+        'Montant':dep.amount,'Date':dep.date,'Spécialiste':dep.spec,
+        'Statut':dep.status,'Commentaire':dep.comment,'Validé par':dep.by}})
     });
     if(!r.ok){
       const err=await r.json().catch(()=>({error:{message:r.status}}));
@@ -1738,13 +1738,13 @@ async function loadAt(){
     const data=await r.json();
     if(data.records){
       deps=data.records
-        .filter(rec=>rec.fields['ID']!=='__USERS__'&&rec.fields['Statut']!=='__CONFIG__')
+        .filter(rec=>rec.fields['Référence']!=='__USERS__'&&rec.fields['Statut']!=='__CONFIG__')
         .map(rec=>({
-          id:rec.fields['ID']||rec.id,agent:rec.fields['Agent']||'',phone:rec.fields['Téléphone']||'',
+          id:rec.id,agent:rec.fields['Agent']||'',phone:rec.fields['Téléphone']||'',
           bank:rec.fields['Banque']||'',amount:rec.fields['Montant']||0,date:rec.fields['Date']||'',
           ref:rec.fields['Référence']||'—',spec:rec.fields['Spécialiste']||'',
           status:rec.fields['Statut']||'En attente',by:rec.fields['Validé par']||'',
-          comment:rec.fields['Commentaire']||'',motif:rec.fields['Motif Rejet']||'',_id:rec.id
+          comment:rec.fields['Commentaire']||'',motif:'',_id:rec.id
         }));all();
     }
   }catch(e){/* silent - network issue */}
@@ -1753,7 +1753,7 @@ async function updAt(dep){
   if(!dep._id)return;
   try{await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+AT_TABLE+'/'+dep._id,{
     method:'PATCH',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify({fields:{'Statut':dep.status,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
+    body:JSON.stringify({fields:{'Statut':dep.status,'Validé par':dep.by}})
   });}catch(e){console.error(e)}
 }
 async function updAtFull(dep){
@@ -1762,7 +1762,7 @@ async function updAtFull(dep){
     method:'PATCH',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
     body:JSON.stringify({fields:{'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
       'Montant':dep.amount,'Date':dep.date,'Référence':dep.ref,'Spécialiste':dep.spec,
-      'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by,'Motif Rejet':dep.motif||''}})
+      'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by}})
   });}catch(e){console.error(e)}
 }
 setInterval(()=>{if(live)loadAt();},30000);
