@@ -1313,19 +1313,49 @@ function getAmountValue(){
 function handleUp(e,context){
   const f=e.target.files[0];if(!f)return;
   const id=context==='main'?document.getElementById('edit-id').value||'__new__':context;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    fileStore[id]={dataUrl:ev.target.result,name:f.name,type:f.type};
-    if(context==='main'){
-      const fname=f.name.length>30?f.name.substring(0,27)+'...':f.name;
-      document.getElementById('utxt').innerHTML=`<strong>✅ ${fname}</strong><br><span style="font-size:11px;color:var(--green)">${(f.size/1024).toFixed(0)} KB — ${f.type||'fichier'}</span>`;
-      document.getElementById('upzone-main').classList.add('has-file');
-    }
-  };
-  reader.onerror=()=>{
-    if(context==='main') toast('Erreur lors du chargement du fichier','err');
-  };
-  reader.readAsDataURL(f);
+  const fname=f.name.length>30?f.name.substring(0,27)+'...':f.name;
+
+  // For images: compress to reduce size for Airtable storage
+  if(f.type.startsWith('image/')){
+    const img=new Image();
+    const url=URL.createObjectURL(f);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const canvas=document.createElement('canvas');
+      const MAX=1200;
+      let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){
+        if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+        else{w=Math.round(w*MAX/h);h=MAX;}
+      }
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.75);
+      fileStore[id]={dataUrl,name:f.name.replace(/\.[^.]+$/,'.jpg'),type:'image/jpeg'};
+      if(context==='main'){
+        document.getElementById('utxt').innerHTML=`<strong>✅ ${fname}</strong><br><span style="font-size:11px;color:var(--green)">Image compressée — prête à envoyer</span>`;
+        document.getElementById('upzone-main').classList.add('has-file');
+      }
+    };
+    img.onerror=()=>{ if(context==='main') toast('Impossible de charger l\'image','err'); };
+    img.src=url;
+  } else {
+    // PDF: read as-is but warn if too large
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const data=ev.target.result;
+      if(data.length>500000){
+        if(context==='main') toast('PDF trop volumineux — essayez une image à la place','warn');
+      }
+      fileStore[id]={dataUrl:data,name:f.name,type:f.type};
+      if(context==='main'){
+        document.getElementById('utxt').innerHTML=`<strong>✅ ${fname}</strong><br><span style="font-size:11px;color:var(--green)">${(f.size/1024).toFixed(0)} KB — PDF</span>`;
+        document.getElementById('upzone-main').classList.add('has-file');
+      }
+    };
+    reader.onerror=()=>{ if(context==='main') toast('Erreur lors du chargement du fichier','err'); };
+    reader.readAsDataURL(f);
+  }
 }
 
 /* ══ SUBMIT ══ */
@@ -1812,9 +1842,12 @@ async function pushAt(dep){
   try{
     const r=await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+AT_TABLE,{
       method:'POST',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({fields:{'Référence':dep.ref||dep.id,'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
+      body:JSON.stringify({fields:{
+        'Référence':dep.ref||dep.id,'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
         'Montant':dep.amount,'Date':dep.date,'Spécialiste':dep.spec,
-        'Statut':dep.status,'Commentaire':dep.comment,'Validé par':dep.by}})
+        'Statut':dep.status,'Commentaire':dep.comment,'Validé par':dep.by,
+        'Bordereau':fileStore[dep.id]?JSON.stringify({n:fileStore[dep.id].name,t:fileStore[dep.id].type,d:fileStore[dep.id].dataUrl}):''
+      }})
     });
     if(!r.ok){
       const err=await r.json().catch(()=>({error:{message:r.status}}));
@@ -1842,8 +1875,18 @@ async function loadAt(){
           bank:rec.fields['Banque']||'',amount:rec.fields['Montant']||0,date:rec.fields['Date']||'',
           ref:rec.fields['Référence']||'—',spec:rec.fields['Spécialiste']||'',
           status:rec.fields['Statut']||'En attente',by:rec.fields['Validé par']||'',
-          comment:rec.fields['Commentaire']||'',motif:'',_id:rec.id
-        }));all();
+          comment:rec.fields['Commentaire']||'',motif:rec.fields['Motif Rejet']||'',_id:rec.id
+        }));
+      // Restore fileStore from Airtable Bordereau field
+      data.records
+        .filter(rec=>rec.fields['Bordereau']&&rec.fields['Référence']!=='__USERS__')
+        .forEach(rec=>{
+          try{
+            const f=JSON.parse(rec.fields['Bordereau']);
+            if(f&&f.d) fileStore[rec.id]={dataUrl:f.d,name:f.n||'bordereau',type:f.t||'image/jpeg'};
+          }catch(e){}
+        });
+      all();
     }
   }catch(e){/* silent - network issue */}
 }
@@ -1858,9 +1901,12 @@ async function updAtFull(dep){
   if(!dep._id)return;
   try{await fetch('https://api.airtable.com/v0/'+AT_BASE+'/'+AT_TABLE+'/'+dep._id,{
     method:'PATCH',headers:{'Authorization':'Bearer '+AT_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify({fields:{'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
+    body:JSON.stringify({fields:{
+      'Agent':dep.agent,'Téléphone':dep.phone,'Banque':dep.bank,
       'Montant':dep.amount,'Date':dep.date,'Référence':dep.ref,'Spécialiste':dep.spec,
-      'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by}})
+      'Commentaire':dep.comment,'Statut':dep.status,'Validé par':dep.by,
+      'Bordereau':fileStore[dep.id]?JSON.stringify({n:fileStore[dep.id].name,t:fileStore[dep.id].type,d:fileStore[dep.id].dataUrl}):undefined
+    }})
   });}catch(e){console.error(e)}
 }
 setInterval(()=>{if(live)loadAt();},30000);
