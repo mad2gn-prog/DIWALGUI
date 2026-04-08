@@ -969,15 +969,14 @@ async function pushUsersToAt(users){
   const val=JSON.stringify(users);
   try{
     if(_usersAtId){
-      await atFetch('/'+_usersAtId,'PATCH',{fields:{ID:'__USERS__',Agent:val,Statut:'__CONFIG__'}});
+      await atFetch('/'+_usersAtId,'PATCH',{fields:{'Agent':val,'Commentaire':'__CONFIG__'}});
     } else {
-      // search first
       const r=await atFetch('?filterByFormula=%7BR%C3%A9f%C3%A9rence%7D%3D%22__USERS__%22','GET');
       if(!r.ok)return;
       const d=await r.json();
       if(d.records&&d.records.length){
         _usersAtId=d.records[0].id;
-        await atFetch('/'+_usersAtId,'PATCH',{fields:{Agent:val}});
+        await atFetch('/'+_usersAtId,'PATCH',{fields:{'Agent':val,'Commentaire':'__CONFIG__'}});
       } else {
         const cr=await atFetch('','POST',{records:[{fields:{'Référence':'__USERS__','Agent':val,'Commentaire':'__CONFIG__'}}]});
         if(cr.ok){const cd=await cr.json();if(cd.records&&cd.records[0])_usersAtId=cd.records[0].id;}
